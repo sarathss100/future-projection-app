@@ -12,11 +12,16 @@ const App = function () {
   const [activeTab, setActiveTab] = useState('sip');
   const [sipAmount, setSipAmount] = useState(0);
   const [lumpsumAmount, setLumpsumAmount] = useState(0);
-  const [annualReturn, setAnnualReturn] = useState(0);
-  const [timePeriod, setTimePeriod] = useState(0);
-  const [stepUpRate, setStepUpRate] = useState(0);
-  const [enableStepUp, setEnableStepUp] = useState(false);
-  const [additionalInvestments, setAdditionalInvestments] = useState<AdditionalInvestment[]>([]);
+  // Separate states for SIP and Lumpsum so each tab keeps its own inputs
+  const [annualReturnSip, setAnnualReturnSip] = useState(0);
+  const [timePeriodSip, setTimePeriodSip] = useState(0);
+  const [stepUpRateSip, setStepUpRateSip] = useState(0);
+  const [enableStepUpSip, setEnableStepUpSip] = useState(false);
+  const [additionalInvestmentsSip, setAdditionalInvestmentsSip] = useState<AdditionalInvestment[]>([]);
+
+  const [annualReturnLumpsum, setAnnualReturnLumpsum] = useState(0);
+  const [timePeriodLumpsum, setTimePeriodLumpsum] = useState(0);
+  const [additionalInvestmentsLumpsum, setAdditionalInvestmentsLumpsum] = useState<AdditionalInvestment[]>([]);
   const [newAdditionalAmount, setNewAdditionalAmount] = useState(0);
   const [newAdditionalYear, setNewAdditionalYear] = useState(1);
   interface YearlyBreakdown {
@@ -43,23 +48,32 @@ const App = function () {
   });
   const [page, setPage] = useState<number>(1);
   const [showAll, setShowAll] = useState<boolean>(false);
+  
 
   // Add new additional investment
   const addAdditionalInvestment = () => {
-    if (newAdditionalYear <= timePeriod && newAdditionalAmount > 0) {
-      setAdditionalInvestments([...additionalInvestments, {
-        year: newAdditionalYear,
-        amount: newAdditionalAmount,
-        id: Date.now()
-      }]);
-      setNewAdditionalAmount(0);
-      setNewAdditionalYear(Math.min(newAdditionalYear + 1, timePeriod));
+    // add to the active tab's additional investments
+    if (newAdditionalAmount <= 0) return;
+    if (activeTab === 'sip') {
+      if (newAdditionalYear <= timePeriodSip) {
+        setAdditionalInvestmentsSip([...additionalInvestmentsSip, { year: newAdditionalYear, amount: newAdditionalAmount, id: Date.now() }]);
+      }
+    } else {
+      if (newAdditionalYear <= timePeriodLumpsum) {
+        setAdditionalInvestmentsLumpsum([...additionalInvestmentsLumpsum, { year: newAdditionalYear, amount: newAdditionalAmount, id: Date.now() }]);
+      }
     }
+    setNewAdditionalAmount(0);
+    setNewAdditionalYear((prev) => prev + 1);
   };
 
   // Remove additional investment
   const removeAdditionalInvestment = (id: number) => {
-    setAdditionalInvestments(additionalInvestments.filter(inv => inv.id !== id));
+    if (activeTab === 'sip') {
+      setAdditionalInvestmentsSip(additionalInvestmentsSip.filter(inv => inv.id !== id));
+    } else {
+      setAdditionalInvestmentsLumpsum(additionalInvestmentsLumpsum.filter(inv => inv.id !== id));
+    }
   };
 
   // Calculate SIP with step-up and additional investments
@@ -164,17 +178,20 @@ const App = function () {
   // Update calculations when inputs change
   useEffect(() => {
     if (activeTab === 'sip') {
-      setResults(calculateAdvancedSIP(sipAmount, annualReturn, timePeriod, stepUpRate, enableStepUp, additionalInvestments));
+      setResults(calculateAdvancedSIP(sipAmount, annualReturnSip, timePeriodSip, stepUpRateSip, enableStepUpSip, additionalInvestmentsSip));
     } else {
-      setResults(calculateAdvancedLumpsum(lumpsumAmount, annualReturn, timePeriod, additionalInvestments));
+      setResults(calculateAdvancedLumpsum(lumpsumAmount, annualReturnLumpsum, timePeriodLumpsum, additionalInvestmentsLumpsum));
     }
-  }, [activeTab, sipAmount, lumpsumAmount, annualReturn, timePeriod, stepUpRate, enableStepUp, additionalInvestments, calculateAdvancedSIP, calculateAdvancedLumpsum]);
+  }, [activeTab, sipAmount, lumpsumAmount, annualReturnSip, timePeriodSip, stepUpRateSip, enableStepUpSip, additionalInvestmentsSip, annualReturnLumpsum, timePeriodLumpsum, additionalInvestmentsLumpsum, calculateAdvancedSIP, calculateAdvancedLumpsum]);
+
 
   // Reset pagination when results change
   useEffect(() => {
     setPage(1);
     setShowAll(false);
   }, [results.yearlyBreakdown.length]);
+
+  
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -186,6 +203,75 @@ const App = function () {
 
   const formatNumber = (amount: number) => {
     return new Intl.NumberFormat('en-IN').format(amount);
+  };
+
+  // Export CSV (opens in Excel)
+  const downloadCSV = () => {
+    if (!results.yearlyBreakdown.length) return;
+    const headers = ['Year','Start Value','SIP Investment','Additional','Total Investment','Returns','End Value','Cumulative Investment'];
+    const rows = results.yearlyBreakdown.map(r => [
+      r.year,
+      r.startValue,
+      r.sipInvestment,
+      r.additionalInvestment,
+      // totalInvestment exists in row object
+      // @ts-ignore
+      r.totalInvestment ?? (r.sipInvestment + r.additionalInvestment),
+      r.returns,
+      r.endValue,
+      r.cumulativeInvestment
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.map(String).map(v => "\"" + v.replace(/\"/g, '""') + "\"").join(',')).join('\n');
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'yearly-breakdown.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export PDF via print dialog (opens print window where user can save as PDF)
+  const downloadPDF = () => {
+    if (!results.yearlyBreakdown.length) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const style = `
+      <style>
+        body{font-family:Arial,Helvetica,sans-serif;padding:16px;color:#111}
+        table{border-collapse:collapse;width:100%}
+        th,td{border:1px solid #ddd;padding:8px}
+        th{background:#f5f5f5;text-align:left}
+        td{text-align:right}
+      </style>
+    `;
+
+    const headerCols = [`<th>Year</th>`,`<th>Start Value</th>`, activeTab === 'sip' ? `<th>SIP Investment</th>` : '', `<th>Additional</th>`,`<th>Returns</th>`,`<th>End Value</th>`].join('');
+
+    const rowsHtml = results.yearlyBreakdown.map(r => {
+      return `<tr>` +
+        `<td style="text-align:left">${r.year}</td>` +
+        `<td>${formatCurrency(r.startValue)}</td>` +
+        `${activeTab === 'sip' ? `<td>${formatCurrency(r.sipInvestment)}</td>` : ''}` +
+        `<td>${r.additionalInvestment > 0 ? formatCurrency(r.additionalInvestment) : '-'}</td>` +
+        `<td>${formatCurrency(r.returns)}</td>` +
+        `<td>${formatCurrency(r.endValue)}</td>` +
+        `</tr>`;
+    }).join('');
+
+    const html = `<!doctype html><html><head><title>Year-wise Breakdown</title>${style}</head><body><h2>Year-wise Breakdown</h2><table><thead><tr>${headerCols}</tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    // Give the window a moment to render
+    setTimeout(() => {
+      try { printWindow.print(); } catch (e) { /* ignore */ }
+    }, 300);
   };
 
   return (
@@ -236,7 +322,7 @@ const App = function () {
           {/* Input Section */}
           <div className="xl:col-span-1 space-y-6">
             {/* Basic Inputs */}
-            <div className="bg-white rounded-2xl shadow-xl border p-6">
+            <div className="bg-white rounded-2xl shadow-xl border p-6 min-h-[360px]">
               <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <IndianRupee className="h-5 w-5 text-emerald-600" />
                 Basic Investment Details
@@ -302,8 +388,8 @@ const App = function () {
                   <div className="relative">
                     <input
                       type="number"
-                      value={annualReturn}
-                      onChange={(e) => setAnnualReturn(Number(e.target.value))}
+                      value={activeTab === 'sip' ? annualReturnSip : annualReturnLumpsum}
+                      onChange={(e) => activeTab === 'sip' ? setAnnualReturnSip(Number(e.target.value)) : setAnnualReturnLumpsum(Number(e.target.value))}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg font-semibold"
                       placeholder="0"
                       step="0.1"
@@ -315,8 +401,8 @@ const App = function () {
                     min="0"
                     max="30"
                     step="0.5"
-                    value={annualReturn}
-                    onChange={(e) => setAnnualReturn(Number(e.target.value))}
+                    value={activeTab === 'sip' ? annualReturnSip : annualReturnLumpsum}
+                    onChange={(e) => activeTab === 'sip' ? setAnnualReturnSip(Number(e.target.value)) : setAnnualReturnLumpsum(Number(e.target.value))}
                     className="w-full mt-2 h-2 bg-green-200 rounded-lg appearance-none cursor-pointer slider"
                   />
                 </div>
@@ -327,8 +413,8 @@ const App = function () {
                   </label>
                   <input
                     type="number"
-                    value={timePeriod}
-                    onChange={(e) => setTimePeriod(Number(e.target.value))}
+                    value={activeTab === 'sip' ? timePeriodSip : timePeriodLumpsum}
+                    onChange={(e) => activeTab === 'sip' ? setTimePeriodSip(Number(e.target.value)) : setTimePeriodLumpsum(Number(e.target.value))}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg font-semibold"
                     placeholder="0"
                   />
@@ -336,8 +422,8 @@ const App = function () {
                     type="range"
                     min="0"
                     max="40"
-                    value={timePeriod}
-                    onChange={(e) => setTimePeriod(Number(e.target.value))}
+                    value={activeTab === 'sip' ? timePeriodSip : timePeriodLumpsum}
+                    onChange={(e) => activeTab === 'sip' ? setTimePeriodSip(Number(e.target.value)) : setTimePeriodLumpsum(Number(e.target.value))}
                     className="w-full mt-2 h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer slider"
                   />
                 </div>
@@ -356,8 +442,8 @@ const App = function () {
                   <input
                     type="checkbox"
                     id="stepup"
-                    checked={enableStepUp}
-                    onChange={(e) => setEnableStepUp(e.target.checked)}
+                    checked={enableStepUpSip}
+                    onChange={(e) => setEnableStepUpSip(e.target.checked)}
                     className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
                   />
                   <label htmlFor="stepup" className="text-sm font-medium text-gray-700">
@@ -365,7 +451,7 @@ const App = function () {
                   </label>
                 </div>
 
-                {enableStepUp && (
+                {enableStepUpSip && (
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Annual Step-up Rate (%)
@@ -373,8 +459,8 @@ const App = function () {
                     <div className="relative">
                       <input
                         type="number"
-                        value={stepUpRate}
-                        onChange={(e) => setStepUpRate(Number(e.target.value))}
+                        value={stepUpRateSip}
+                        onChange={(e) => setStepUpRateSip(Number(e.target.value))}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg font-semibold"
                         placeholder="0"
                         step="1"
@@ -385,12 +471,12 @@ const App = function () {
                       type="range"
                       min="0"
                       max="25"
-                      value={stepUpRate}
-                      onChange={(e) => setStepUpRate(Number(e.target.value))}
+                      value={stepUpRateSip}
+                      onChange={(e) => setStepUpRateSip(Number(e.target.value))}
                       className="w-full mt-2 h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer slider"
                     />
                     <p className="text-xs text-gray-500 mt-2">
-                      Your SIP will increase by {stepUpRate}% each year
+                      Your SIP will increase by {stepUpRateSip}% each year
                     </p>
                   </div>
                 )}
@@ -428,7 +514,7 @@ const App = function () {
                       onChange={(e) => setNewAdditionalYear(Number(e.target.value))}
                       className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:outline-none text-sm"
                       min="1"
-                      max={timePeriod}
+                      max={activeTab === 'sip' ? timePeriodSip : timePeriodLumpsum}
                     />
                   </div>
                 </div>
@@ -440,9 +526,9 @@ const App = function () {
                   Add Investment
                 </button>
 
-                {additionalInvestments.length > 0 && (
+                {((activeTab === 'sip' ? additionalInvestmentsSip : additionalInvestmentsLumpsum).length > 0) && (
                   <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {additionalInvestments.map((inv) => (
+                    {(activeTab === 'sip' ? additionalInvestmentsSip : additionalInvestmentsLumpsum).map((inv) => (
                       <div key={inv.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
                         <span className="text-sm">
                           Year {inv.year}: ₹{formatNumber(inv.amount)}
@@ -498,7 +584,8 @@ const App = function () {
               </h3>
               
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <div className="max-h-72 overflow-y-auto">
+                  <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b">
                       <th className="text-left p-3 font-semibold">Year</th>
@@ -542,6 +629,25 @@ const App = function () {
                     })()}
                   </tbody>
                 </table>
+                </div>
+              </div>
+              {/* Persistent download toolbar (always visible) */}
+              <div className="flex items-center justify-end gap-2 mt-4">
+                <button
+                  onClick={downloadCSV}
+                  disabled={!results.yearlyBreakdown.length}
+                  className={`px-3 py-1 rounded-lg text-sm text-white ${results.yearlyBreakdown.length ? 'bg-blue-600 hover:opacity-90' : 'bg-blue-300 cursor-not-allowed opacity-60'}`}
+                >
+                  Download Excel
+                </button>
+
+                <button
+                  onClick={downloadPDF}
+                  disabled={!results.yearlyBreakdown.length}
+                  className={`px-3 py-1 rounded-lg text-sm text-white ${results.yearlyBreakdown.length ? 'bg-gray-800 hover:opacity-90' : 'bg-gray-400 cursor-not-allowed opacity-60'}`}
+                >
+                  Download PDF
+                </button>
               </div>
               {/* Pagination / View More Controls */}
               {results.yearlyBreakdown.length > 10 && (
@@ -556,6 +662,8 @@ const App = function () {
                     >
                       {showAll ? 'Show Less' : 'View All'}
                     </button>
+                    
+
                     {!showAll && (
                       <div className="flex items-center gap-2">
                         <button
@@ -643,6 +751,9 @@ const App = function () {
       </div>
 
 
+      <div className="text-center text-sm text-gray-500 py-6">
+        Created by FinApp — All rights reserved.
+      </div>
     </div>
   );
 };
