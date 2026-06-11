@@ -1,73 +1,40 @@
-# React + TypeScript + Vite
+# Future Projection App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Project overview
+Future Projection App is a client-side single-page application built with React and TypeScript. It provides an interactive environment for exploring hypothetical future scenarios by projecting trends, visualizing outcomes, and comparing parameter-driven variations.
 
-Currently, two official plugins are available:
+Core goals
+- Provide an approachable UI for turning inputs and datasets into understandable projections.
+- Make projections transparent and traceable: inputs, assumptions, and simple models are visible to the user.
+- Keep the app lightweight and portable so it can run entirely in the browser.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Key features
+- Interactive scenario builder: change parameters and see projection changes in real time.
+- Visualizations for comparing multiple scenarios side-by-side.
+- Small, deterministic projection models designed for clarity rather than black-box prediction.
+- Extensible data layer so sample datasets or user-provided files can be swapped in.
 
-## React Compiler
+Architecture (high level)
+- Frontend: React + TypeScript powering a single-page app. UI is composed of modular components that encapsulate input controls, model logic, and visualization.
+- State: local component state and shared context/state modules keep scenario parameters and derived results synchronized across views.
+- Models: simple, deterministic functions that compute projections from inputs and optional dataset slices; designed to be auditable and easy to test.
+- Assets and data: static sample datasets and configuration live in the project tree under `src/assets` and the `public` folder.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Tech stack
+- React
+- TypeScript
+- Vite for fast bundling during development
+- Minimal CSS and small visualization libraries for charts
 
-## Expanding the ESLint configuration
+Data & models
+Projections are computed client-side from explicit input parameters and optional sample datasets. Models are intentionally simple (e.g., linear growth, compounded rates, configurable multipliers) so users can see how assumptions affect outcomes. If the project integrates external data later, those sources and any transformation steps should be documented and versioned.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Project layout (important files)
+- `src/` — application source code (components, models, styles, assets)
+- `src/main.tsx` — app entry
+- `src/App.tsx` — top-level application component
+- `public/` — static assets served with the app
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+License
+This repository does not include a license file by default. Add a `LICENSE` that reflects how you want the project to be used.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
