@@ -286,7 +286,7 @@ const App = function () {
               <Calculator className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              Investment Retir Calculator
+              Investment Return Calculator
             </h1>
           </div>
           <p className="text-gray-600 text-lg">
