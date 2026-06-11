@@ -10,20 +10,20 @@ interface AdditionalInvestment {
 
 const App = function () {
   const [activeTab, setActiveTab] = useState('sip');
-  const [sipAmount, setSipAmount] = useState(0);
-  const [lumpsumAmount, setLumpsumAmount] = useState(0);
+  const [sipAmount, setSipAmount] = useState<string>("");
+  const [lumpsumAmount, setLumpsumAmount] = useState<string>("");
   // Separate states for SIP and Lumpsum so each tab keeps its own inputs
-  const [annualReturnSip, setAnnualReturnSip] = useState(0);
-  const [timePeriodSip, setTimePeriodSip] = useState(0);
-  const [stepUpRateSip, setStepUpRateSip] = useState(0);
+  const [annualReturnSip, setAnnualReturnSip] = useState<string>("");
+  const [timePeriodSip, setTimePeriodSip] = useState<string>("");
+  const [stepUpRateSip, setStepUpRateSip] = useState<string>("");
   const [enableStepUpSip, setEnableStepUpSip] = useState(false);
   const [additionalInvestmentsSip, setAdditionalInvestmentsSip] = useState<AdditionalInvestment[]>([]);
 
-  const [annualReturnLumpsum, setAnnualReturnLumpsum] = useState(0);
-  const [timePeriodLumpsum, setTimePeriodLumpsum] = useState(0);
+  const [annualReturnLumpsum, setAnnualReturnLumpsum] = useState<string>("");
+  const [timePeriodLumpsum, setTimePeriodLumpsum] = useState<string>("");
   const [additionalInvestmentsLumpsum, setAdditionalInvestmentsLumpsum] = useState<AdditionalInvestment[]>([]);
-  const [newAdditionalAmount, setNewAdditionalAmount] = useState(0);
-  const [newAdditionalYear, setNewAdditionalYear] = useState(1);
+  const [newAdditionalAmount, setNewAdditionalAmount] = useState<string>("");
+  const [newAdditionalYear, setNewAdditionalYear] = useState<string>("");
   interface YearlyBreakdown {
     year: number;
     startValue: number;
@@ -53,18 +53,20 @@ const App = function () {
   // Add new additional investment
   const addAdditionalInvestment = () => {
     // add to the active tab's additional investments
-    if (newAdditionalAmount <= 0) return;
+    if (Number(newAdditionalAmount) <= 0) return;
+    const yearNum = Number(newAdditionalYear) || 0;
+    const amountNum = Number(newAdditionalAmount) || 0;
     if (activeTab === 'sip') {
-      if (newAdditionalYear <= timePeriodSip) {
-        setAdditionalInvestmentsSip([...additionalInvestmentsSip, { year: newAdditionalYear, amount: newAdditionalAmount, id: Date.now() }]);
+      if (yearNum > 0 && yearNum <= (Number(timePeriodSip) || 0)) {
+        setAdditionalInvestmentsSip([...additionalInvestmentsSip, { year: yearNum, amount: amountNum, id: Date.now() }]);
       }
     } else {
-      if (newAdditionalYear <= timePeriodLumpsum) {
-        setAdditionalInvestmentsLumpsum([...additionalInvestmentsLumpsum, { year: newAdditionalYear, amount: newAdditionalAmount, id: Date.now() }]);
+      if (yearNum > 0 && yearNum <= (Number(timePeriodLumpsum) || 0)) {
+        setAdditionalInvestmentsLumpsum([...additionalInvestmentsLumpsum, { year: yearNum, amount: amountNum, id: Date.now() }]);
       }
     }
-    setNewAdditionalAmount(0);
-    setNewAdditionalYear((prev) => prev + 1);
+    setNewAdditionalAmount("");
+    setNewAdditionalYear((prev) => String((Number(prev) || 0) + 1));
   };
 
   // Remove additional investment
@@ -178,9 +180,9 @@ const App = function () {
   // Update calculations when inputs change
   useEffect(() => {
     if (activeTab === 'sip') {
-      setResults(calculateAdvancedSIP(sipAmount, annualReturnSip, timePeriodSip, stepUpRateSip, enableStepUpSip, additionalInvestmentsSip));
+      setResults(calculateAdvancedSIP(Number(sipAmount) || 0, Number(annualReturnSip) || 0, Number(timePeriodSip) || 0, Number(stepUpRateSip) || 0, enableStepUpSip, additionalInvestmentsSip));
     } else {
-      setResults(calculateAdvancedLumpsum(lumpsumAmount, annualReturnLumpsum, timePeriodLumpsum, additionalInvestmentsLumpsum));
+      setResults(calculateAdvancedLumpsum(Number(lumpsumAmount) || 0, Number(annualReturnLumpsum) || 0, Number(timePeriodLumpsum) || 0, additionalInvestmentsLumpsum));
     }
   }, [activeTab, sipAmount, lumpsumAmount, annualReturnSip, timePeriodSip, stepUpRateSip, enableStepUpSip, additionalInvestmentsSip, annualReturnLumpsum, timePeriodLumpsum, additionalInvestmentsLumpsum, calculateAdvancedSIP, calculateAdvancedLumpsum]);
 
@@ -284,7 +286,7 @@ const App = function () {
               <Calculator className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              Advanced Investment Calculator
+              Investment Retir Calculator
             </h1>
           </div>
           <p className="text-gray-600 text-lg">
@@ -320,7 +322,7 @@ const App = function () {
 
         <div className="grid xl:grid-cols-3 gap-8">
           {/* Input Section */}
-          <div className="xl:col-span-1 space-y-6">
+          <div className="xl:col-span-1 space-y-6 min-w-0">
             {/* Basic Inputs */}
             <div className="bg-white rounded-2xl shadow-xl border p-6 min-h-[360px]">
               <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -336,21 +338,21 @@ const App = function () {
                     </label>
                     <div className="relative">
                       <span className="absolute left-4 top-4 text-gray-500">₹</span>
-                      <input
-                        type="number"
-                        value={sipAmount}
-                        onChange={(e) => setSipAmount(Number(e.target.value))}
-                        className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg font-semibold"
-                        placeholder="0"
-                      />
+                        <input
+                          type="number"
+                          value={sipAmount}
+                          onChange={(e) => setSipAmount(e.target.value)}
+                          className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg font-semibold"
+                          placeholder=""
+                        />
                     </div>
                     <input
                       type="range"
                       min="0"
                       max="100000"
                       step="500"
-                      value={sipAmount}
-                      onChange={(e) => setSipAmount(Number(e.target.value))}
+                      value={Number(sipAmount) || 0}
+                      onChange={(e) => setSipAmount(e.target.value)}
                       className="w-full mt-2 h-2 bg-emerald-200 rounded-lg appearance-none cursor-pointer slider"
                     />
                   </div>
@@ -364,9 +366,9 @@ const App = function () {
                       <input
                         type="number"
                         value={lumpsumAmount}
-                        onChange={(e) => setLumpsumAmount(Number(e.target.value))}
+                        onChange={(e) => setLumpsumAmount(e.target.value)}
                         className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg font-semibold"
-                        placeholder="0"
+                        placeholder=""
                       />
                     </div>
                     <input
@@ -374,8 +376,8 @@ const App = function () {
                       min="0"
                       max="10000000"
                       step="10000"
-                      value={lumpsumAmount}
-                      onChange={(e) => setLumpsumAmount(Number(e.target.value))}
+                      value={Number(lumpsumAmount) || 0}
+                      onChange={(e) => setLumpsumAmount(e.target.value)}
                       className="w-full mt-2 h-2 bg-emerald-200 rounded-lg appearance-none cursor-pointer slider"
                     />
                   </div>
@@ -389,9 +391,9 @@ const App = function () {
                     <input
                       type="number"
                       value={activeTab === 'sip' ? annualReturnSip : annualReturnLumpsum}
-                      onChange={(e) => activeTab === 'sip' ? setAnnualReturnSip(Number(e.target.value)) : setAnnualReturnLumpsum(Number(e.target.value))}
+                      onChange={(e) => activeTab === 'sip' ? setAnnualReturnSip(e.target.value) : setAnnualReturnLumpsum(e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg font-semibold"
-                      placeholder="0"
+                      placeholder=""
                       step="0.1"
                     />
                     <span className="absolute right-4 top-3 text-gray-500">%</span>
@@ -401,8 +403,8 @@ const App = function () {
                     min="0"
                     max="30"
                     step="0.5"
-                    value={activeTab === 'sip' ? annualReturnSip : annualReturnLumpsum}
-                    onChange={(e) => activeTab === 'sip' ? setAnnualReturnSip(Number(e.target.value)) : setAnnualReturnLumpsum(Number(e.target.value))}
+                    value={Number(activeTab === 'sip' ? annualReturnSip : annualReturnLumpsum) || 0}
+                    onChange={(e) => activeTab === 'sip' ? setAnnualReturnSip(e.target.value) : setAnnualReturnLumpsum(e.target.value)}
                     className="w-full mt-2 h-2 bg-green-200 rounded-lg appearance-none cursor-pointer slider"
                   />
                 </div>
@@ -414,16 +416,16 @@ const App = function () {
                   <input
                     type="number"
                     value={activeTab === 'sip' ? timePeriodSip : timePeriodLumpsum}
-                    onChange={(e) => activeTab === 'sip' ? setTimePeriodSip(Number(e.target.value)) : setTimePeriodLumpsum(Number(e.target.value))}
+                    onChange={(e) => activeTab === 'sip' ? setTimePeriodSip(e.target.value) : setTimePeriodLumpsum(e.target.value)}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg font-semibold"
-                    placeholder="0"
+                    placeholder=""
                   />
                   <input
                     type="range"
                     min="0"
                     max="40"
-                    value={activeTab === 'sip' ? timePeriodSip : timePeriodLumpsum}
-                    onChange={(e) => activeTab === 'sip' ? setTimePeriodSip(Number(e.target.value)) : setTimePeriodLumpsum(Number(e.target.value))}
+                    value={Number(activeTab === 'sip' ? timePeriodSip : timePeriodLumpsum) || 0}
+                    onChange={(e) => activeTab === 'sip' ? setTimePeriodSip(e.target.value) : setTimePeriodLumpsum(e.target.value)}
                     className="w-full mt-2 h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer slider"
                   />
                 </div>
@@ -460,9 +462,9 @@ const App = function () {
                       <input
                         type="number"
                         value={stepUpRateSip}
-                        onChange={(e) => setStepUpRateSip(Number(e.target.value))}
+                        onChange={(e) => setStepUpRateSip(e.target.value)}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-lg font-semibold"
-                        placeholder="0"
+                        placeholder=""
                         step="1"
                       />
                       <span className="absolute right-4 top-3 text-gray-500">%</span>
@@ -471,8 +473,8 @@ const App = function () {
                       type="range"
                       min="0"
                       max="25"
-                      value={stepUpRateSip}
-                      onChange={(e) => setStepUpRateSip(Number(e.target.value))}
+                      value={Number(stepUpRateSip) || 0}
+                      onChange={(e) => setStepUpRateSip(e.target.value)}
                       className="w-full mt-2 h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer slider"
                     />
                     <p className="text-xs text-gray-500 mt-2">
@@ -499,9 +501,9 @@ const App = function () {
                     <input
                       type="number"
                       value={newAdditionalAmount}
-                      onChange={(e) => setNewAdditionalAmount(Number(e.target.value))}
+                      onChange={(e) => setNewAdditionalAmount(e.target.value)}
                       className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:outline-none text-sm"
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
                   <div>
@@ -511,7 +513,7 @@ const App = function () {
                     <input
                       type="number"
                       value={newAdditionalYear}
-                      onChange={(e) => setNewAdditionalYear(Number(e.target.value))}
+                      onChange={(e) => setNewAdditionalYear(e.target.value)}
                       className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:outline-none text-sm"
                       min="1"
                       max={activeTab === 'sip' ? timePeriodSip : timePeriodLumpsum}
@@ -548,7 +550,7 @@ const App = function () {
           </div>
 
           {/* Results and Breakdown Section */}
-          <div className="xl:col-span-2 space-y-6">
+          <div className="xl:col-span-2 space-y-6 min-w-0">
             {/* Summary Cards */}
             <div className="grid md:grid-cols-3 gap-4">
               <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl shadow-xl p-6 text-white">
@@ -589,11 +591,11 @@ const App = function () {
                   <thead>
                     <tr className="bg-gray-50 border-b">
                       <th className="text-left p-3 font-semibold">Year</th>
-                      <th className="text-right p-3 font-semibold">Start Value</th>
+                      <th className="text-right p-3 font-semibold">Initial Value</th>
                       {activeTab === 'sip' && <th className="text-right p-3 font-semibold">SIP Investment</th>}
                       <th className="text-right p-3 font-semibold">Additional</th>
                       <th className="text-right p-3 font-semibold">Returns</th>
-                      <th className="text-right p-3 font-semibold">End Value</th>
+                      <th className="text-right p-3 font-semibold">Total Value</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -651,11 +653,11 @@ const App = function () {
               </div>
               {/* Pagination / View More Controls */}
               {results.yearlyBreakdown.length > 10 && (
-                <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-gray-600">
+                <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
+                  <div className="text-sm text-gray-600 text-center sm:text-left">
                     Showing {showAll ? results.yearlyBreakdown.length : Math.min(10, results.yearlyBreakdown.length)} of {results.yearlyBreakdown.length} years
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
                     <button
                       onClick={() => setShowAll((s) => !s)}
                       className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-sm hover:opacity-90"
